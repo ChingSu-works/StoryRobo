@@ -86,16 +86,6 @@ back_to_origin = True
 ButtonConter = 0
 
 #=====================================================================================================================
- # Audio paramater setup for pyaudio
-FRAMES_PER_BUFFER = 3200
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 48000
-p = pyaudio.PyAudio()
-seconds = 10
-frames = []
-
-#=====================================================================================================================
 # Open port
 if portHandler.openPort():
     print("Succeeded to open the port")
@@ -151,6 +141,7 @@ def record_movement():
         if Motor_Position_Data[f'M{i}'] > 4200000000:
             Motor_Position_Data[f'M{i}'] = Motor_Position_Data[f'M{i}'] - 4294967295 + 4095
     Motor_Position_Data_List.append(Motor_Position_Data)
+    
 
 def back_origin():
     print("Back to origin...")
@@ -173,6 +164,7 @@ def back_origin():
 
 def replay_movement():
     global REPLAY_COUNTER
+    global replaying
     
     if REPLAY_COUNTER <= (len(Motor_read_list) - 1):
         for i in DXL_ID:
@@ -192,23 +184,70 @@ def replay_movement():
         replaying = False
         print("End Replaying")
 
-def record_audio(audio_path):
+# def record_audio(audio_path):
+#     stream = p.open(
+#                     format=FORMAT,
+#                     channels=CHANNELS,
+#                     rate=RATE,
+#                     input=True,
+#                     frames_per_buffer=FRAMES_PER_BUFFER
+#                     )
+
+#     print("Start recording audio...")
+#     frames.clear()
+    
+#     while recording:
+#         data = stream.read(FRAMES_PER_BUFFER)
+#         frames.append(data)
+        
+#         # Check for event to stop recording
+#         if recording == False:
+#             break
+
+#     print("Stop recording audio!")
+    
+#     # p.close()
+#     stream.stop_stream()
+#     stream.close()
+#     p.terminate()
+
+#     obj = wave.open(audio_path, "wb")
+#     obj.setnchannels(CHANNELS)
+#     obj.setsampwidth(p.get_sample_size(FORMAT))
+#     obj.setframerate(RATE)
+#     obj.writeframes(b"".join(frames))
+#     obj.close()
+        
+#     print("Audio stored...")
+#     # sys.exit()
+#     return
+
+def record_audio(audio_path, input_device_index = None):
+    global recording
+    FRAMES_PER_BUFFER = 4096
+    FORMAT = pyaudio.paInt16
+    CHANNELS = 1
+    RATE = 48000
+    p = pyaudio.PyAudio()
+    
     stream = p.open(
-                    format=FORMAT,
-                    channels=CHANNELS,
-                    rate=RATE,
-                    input=True,
-                    frames_per_buffer=FRAMES_PER_BUFFER
+                        format              =   FORMAT,
+                        channels            =   CHANNELS,
+                        rate                =   RATE,
+                        input               =   True,
+                        frames_per_buffer   =   FRAMES_PER_BUFFER,
+                        input_device_index  =   input_device_index  # Specify input device index
                     )
 
     print("Start recording audio...")
+    frames = []
     
     while recording:
         data = stream.read(FRAMES_PER_BUFFER)
         frames.append(data)
         
         # Check for event to stop recording
-        if recording == False:
+        if not recording:
             break
 
     print("Stop recording audio!")
@@ -225,13 +264,17 @@ def record_audio(audio_path):
     obj.close()
         
     print("Audio stored...")
-    # sys.exit()
     return
 
-def replay_audio(filename):
+def increase_volume(audio, factor):
+    return audio * factor
+
+def replay_audio(filename, volume_factor):
     sd.default.device = 2
-    # Extract data and sampling rate from file
-    data, fs = sf.read(filename, dtype='float32')  
+
+    data, fs = sf.read(filename, dtype='float32')
+    data = increase_volume(data, volume_factor)
+
     sd.play(data, fs)
     status = sd.wait()
 
@@ -255,7 +298,7 @@ try:
                 print("Recording Movement...")
                 
                 #Start to recording audio
-                Record_Audio_Thread = threading.Thread(target=record_audio, args=('output.wav', ))
+                Record_Audio_Thread = threading.Thread(target=record_audio, args=('output.wav', 1))
                 Record_Audio_Thread.start()
                 print("Recording Audio...")
                 
@@ -263,11 +306,13 @@ try:
                 #Ending Record
                 recording = False
                 recording_movement.cancel()
+                print(f"Thread is alive: {recording_movement.is_alive()}")
                 
                 #Store motor position data into json
                 json_position_data = json.dumps(Motor_Position_Data_List, indent=4)
                 with open("Motor_Position.json", "w") as outfile:
                     outfile.write(json_position_data)
+                    
 
                 print("End Recording...")
                 
@@ -287,7 +332,7 @@ try:
                 replaying_movement = RepeatingTimer(0.000001, replay_movement)
                 replaying_movement.start()
                 
-                Replay_Audio_Thread = threading.Thread(target=replay_audio, args=('output.wav', ))
+                Replay_Audio_Thread = threading.Thread(target=replay_audio, args=('output.wav', 3.0))
                 Replay_Audio_Thread.start()
                 Replay_Audio_Thread.join()
                 
