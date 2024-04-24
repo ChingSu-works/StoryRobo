@@ -184,44 +184,6 @@ def replay_movement():
         replaying = False
         print("End Replaying")
 
-# def record_audio(audio_path):
-#     stream = p.open(
-#                     format=FORMAT,
-#                     channels=CHANNELS,
-#                     rate=RATE,
-#                     input=True,
-#                     frames_per_buffer=FRAMES_PER_BUFFER
-#                     )
-
-#     print("Start recording audio...")
-#     frames.clear()
-    
-#     while recording:
-#         data = stream.read(FRAMES_PER_BUFFER)
-#         frames.append(data)
-        
-#         # Check for event to stop recording
-#         if recording == False:
-#             break
-
-#     print("Stop recording audio!")
-    
-#     # p.close()
-#     stream.stop_stream()
-#     stream.close()
-#     p.terminate()
-
-#     obj = wave.open(audio_path, "wb")
-#     obj.setnchannels(CHANNELS)
-#     obj.setsampwidth(p.get_sample_size(FORMAT))
-#     obj.setframerate(RATE)
-#     obj.writeframes(b"".join(frames))
-#     obj.close()
-        
-#     print("Audio stored...")
-#     # sys.exit()
-#     return
-
 def record_audio(audio_path, input_device_index = None):
     global recording
     FRAMES_PER_BUFFER = 4096
