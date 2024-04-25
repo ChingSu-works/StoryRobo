@@ -166,12 +166,12 @@ def replay_movement():
     global REPLAY_COUNTER
     global replaying
     
-    if REPLAY_COUNTER <= (len(Motor_read_list) - 1):
+    if REPLAY_COUNTER <= (len(Motor_read_list)-1):
         for i in DXL_ID:
             packetHandler.write4ByteTxRx(portHandler, i, ADDR_GOAL_POSITION, Motor_read_list[REPLAY_COUNTER][f'M{i}'])
-            Motor_Pos_in_Replaying, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, i, ADDR_PRESENT_POSITION)
-            print(f"M{i} Replay  Pos: {Motor_read_list[REPLAY_COUNTER][f'M{i}']}")
-            print(f"M{i} Present Pos: {Motor_Pos_in_Replaying}")
+            # Motor_Pos_in_Replaying, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, i, ADDR_PRESENT_POSITION)
+            # print(f"M{i} Replay  Pos: {Motor_read_list[REPLAY_COUNTER][f'M{i}']}")
+            # print(f"M{i} Present Pos: {Motor_Pos_in_Replaying}")
     
         REPLAY_COUNTER += 1
 
@@ -255,7 +255,7 @@ try:
                 Motor_Position_Data_List.clear()
                 
                 #Start to recording movement
-                recording_movement = RepeatingTimer(0.000001, record_movement)
+                recording_movement = RepeatingTimer(0.0001, record_movement)
                 recording_movement.start()
                 print("Recording Movement...")
                 
@@ -290,9 +290,13 @@ try:
                 
                 with open("Motor_Position.json") as openfile:
                     Motor_read_list = json.load(openfile)
-                
-                replaying_movement = RepeatingTimer(0.000001, replay_movement)
+
+                #####################################################################
+                #改用For迴圈去跑replaylist裡面的參數，並且取消用threading改成直接呼叫Function
+                replaying_movement = RepeatingTimer(0.01, replay_movement)
                 replaying_movement.start()
+                #改用For迴圈去跑replaylist裡面的參數，並且取消用threading改成直接呼叫Function
+                #####################################################################
                 
                 Replay_Audio_Thread = threading.Thread(target=replay_audio, args=('output.wav', 3.0))
                 Replay_Audio_Thread.start()
