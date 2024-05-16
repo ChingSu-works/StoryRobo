@@ -12,14 +12,14 @@ def increase_volume(audio, factor):
     return audio * factor
 
 # Set the default audio device
-sd.default.device = 2
+sd.default.device = 0
 
 # Load audio file
 filename = 'output.wav'
 data, fs = sf.read(filename, dtype='float32')
 
 # Increase volume by default (e.g., double the volume)
-volume_factor = 5.0
+volume_factor = 10.0
 data = increase_volume(data, volume_factor)
 
 # Play the audio

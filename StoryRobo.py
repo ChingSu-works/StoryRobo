@@ -68,7 +68,6 @@ dxl_goal_velocity = 100
 
 portHandler = PortHandler(DEVICENAME)
 packetHandler = PacketHandler(PROTOCOL_VERSION)
-
 #=====================================================================================================================
 #For Button setup
 replay_pin = 11
@@ -163,26 +162,18 @@ def back_origin():
             print(f"M{j}: Write success~~")
 
 def replay_movement():
-    global REPLAY_COUNTER
     global replaying
-    
-    if REPLAY_COUNTER <= (len(Motor_read_list)-1):
+    for item in Motor_read_list:
         for i in DXL_ID:
-            packetHandler.write4ByteTxRx(portHandler, i, ADDR_GOAL_POSITION, Motor_read_list[REPLAY_COUNTER][f'M{i}'])
-            # Motor_Pos_in_Replaying, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, i, ADDR_PRESENT_POSITION)
-            # print(f"M{i} Replay  Pos: {Motor_read_list[REPLAY_COUNTER][f'M{i}']}")
-            # print(f"M{i} Present Pos: {Motor_Pos_in_Replaying}")
+            packetHandler.write4ByteTxRx(portHandler, i, ADDR_GOAL_POSITION, item[f'M{i}'])
+            time.sleep(0.02)
     
-        REPLAY_COUNTER += 1
+    replaying = False
 
-        print(REPLAY_COUNTER)
-    else:
-        for i in DXL_ID:
-            dxl_comm_result, dxl_error = packetHandler.reboot(portHandler, i)
-            dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, i, ADDR_TORQUE_ENABLE, DISABLE)
-        replaying_movement.cancel()
-        replaying = False
-        print("End Replaying")
+    for i in DXL_ID:
+        dxl_comm_result, dxl_error = packetHandler.reboot(portHandler, i)
+        dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, i, ADDR_TORQUE_ENABLE, DISABLE)
+    print("End Replaying")
 
 def record_audio(audio_path, input_device_index = None):
     global recording
@@ -198,7 +189,6 @@ def record_audio(audio_path, input_device_index = None):
                         rate                =   RATE,
                         input               =   True,
                         frames_per_buffer   =   FRAMES_PER_BUFFER,
-                        input_device_index  =   input_device_index  # Specify input device index
                     )
 
     print("Start recording audio...")
@@ -232,7 +222,7 @@ def increase_volume(audio, factor):
     return audio * factor
 
 def replay_audio(filename, volume_factor):
-    sd.default.device = 2
+    sd.default.device = 3
 
     data, fs = sf.read(filename, dtype='float32')
     data = increase_volume(data, volume_factor)
@@ -255,7 +245,7 @@ try:
                 Motor_Position_Data_List.clear()
                 
                 #Start to recording movement
-                recording_movement = RepeatingTimer(0.0001, record_movement)
+                recording_movement = RepeatingTimer(0.00001, record_movement)
                 recording_movement.start()
                 print("Recording Movement...")
                 
@@ -274,14 +264,14 @@ try:
                 json_position_data = json.dumps(Motor_Position_Data_List, indent=4)
                 with open("Motor_Position.json", "w") as outfile:
                     outfile.write(json_position_data)
-                    
-
+                
                 print("End Recording...")
                 
             time.sleep(0.5)            
 
         if replay_btn_state == False:
             print('Replay Button Pressed')
+            
             if replaying == False:
                 replaying = True
                 REPLAY_COUNTER = 0
@@ -291,14 +281,10 @@ try:
                 with open("Motor_Position.json") as openfile:
                     Motor_read_list = json.load(openfile)
 
-                #####################################################################
-                #改用For迴圈去跑replaylist裡面的參數，並且取消用threading改成直接呼叫Function
-                replaying_movement = RepeatingTimer(0.01, replay_movement)
-                replaying_movement.start()
-                #改用For迴圈去跑replaylist裡面的參數，並且取消用threading改成直接呼叫Function
-                #####################################################################
+                Replay_Movement_Thread = threading.Thread(target=replay_movement,)
+                Replay_Movement_Thread.start()
                 
-                Replay_Audio_Thread = threading.Thread(target=replay_audio, args=('output.wav', 3.0))
+                Replay_Audio_Thread = threading.Thread(target=replay_audio, args=('output.wav', 7.0))
                 Replay_Audio_Thread.start()
                 Replay_Audio_Thread.join()
                 
@@ -306,7 +292,7 @@ try:
             elif replaying == True:
                 #Ending Replay
                 replaying = False
-                replaying_movement.cancel()
+                Replay_Movement_Thread.cancel()
                 
                 for i in DXL_ID:
                     dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, i, ADDR_TORQUE_ENABLE, DISABLE)
